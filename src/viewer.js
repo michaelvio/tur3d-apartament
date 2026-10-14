@@ -21,6 +21,9 @@ const params = new URLSearchParams(location.search);
 // Pe mobil (Faza 5, pasul 8): rezoluție limitată, LoD (Spark ține ~1 mil. splat-uri pe Android)
 // și doar camerele vecine încărcate în fundal. ?lod=0 / ?lod=1 forțează LoD-ul. Căștile Quest: tot cu LoD.
 const LOD = params.has("lod") ? params.get("lod") === "1" : isTouch || isOculus();
+// Modelele .rad (LoD precalculat de build-lod) se citesc pe bucăți, după nevoie (cereri HTTP Range).
+// În aplicația Android serverul de assets nu suportă Range: acolo fișierul se încarcă întreg.
+const PAGED = params.has("paged") ? params.get("paged") === "1" : location.hostname !== "appassets.androidplatform.net";
 
 // ---------- Scena ----------
 const renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -101,7 +104,8 @@ function applyTransform(mesh, t = {}) {
 function loadRoom(room) {
   if (!room.splat) return null;   // cameră doar cu panorame
   if (meshes.has(room.id)) return meshes.get(room.id);
-  const mesh = new SplatMesh({ url: tourBase + room.splat, lod: LOD });
+  const url = tourBase + room.splat;
+  const mesh = new SplatMesh(room.splat.endsWith(".rad") ? { url, paged: PAGED } : { url, lod: LOD });
   applyTransform(mesh, room.transform);
   mesh.visible = !(mode === "pano" && pano.sphere.material.opacity === 1);
   scene.add(mesh);
