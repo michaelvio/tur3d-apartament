@@ -59,7 +59,9 @@ let minimap;
 
 async function main() {
   try {
-    tour = await (await fetch(tourUrl)).json();
+    // no-cache: browserul verifică la server dacă turul s-a schimbat (GitHub Pages ține fișierele 10 min în cache;
+    // un tour.json vechi ar cere modele care nu mai există).
+    tour = await (await fetch(tourUrl, { cache: "no-cache" })).json();
   } catch (e) {
     setStatus(`Nu pot citi ${tourUrl}. Rulează: tur3d manifest, apoi deschide pagina printr-un server http.`);
     throw e;

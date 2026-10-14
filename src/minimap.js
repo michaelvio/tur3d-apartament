@@ -32,7 +32,7 @@ export class Minimap {
   // Pereții din planul generat de „tur3d floorplan" (grupul #walls, deja în coordonatele lumii).
   async loadFloorplan(url) {
     try {
-      const doc = new DOMParser().parseFromString(await (await fetch(url)).text(), "image/svg+xml");
+      const doc = new DOMParser().parseFromString(await (await fetch(url, { cache: "no-cache" })).text(), "image/svg+xml");
       this.walls = [...doc.querySelectorAll("#walls rect")].map((r) =>
         ["x", "y", "width", "height"].map((a) => parseFloat(r.getAttribute(a))));
     } catch (e) {
