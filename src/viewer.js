@@ -1,6 +1,6 @@
 // Viewer-ul turului 3D: three.js + Spark (Gaussian Splatting).
 // Faza 5: încărcare tour.json, machetă/mers, coliziuni pe bounds, puncte de vedere cu tranziții,
-// minimap, uși, controale pe mobil, mod VR (WebXR). Cu ?edit=1 se încarcă și editorul de aliniere (Faza 4).
+// minimap, uși, controale pe mobil, panorame 360° (varianta A), mod VR (WebXR). Cu ?edit=1 se încarcă și editorul de aliniere (Faza 4).
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
@@ -9,6 +9,7 @@ import { buildRoomBar, buildViewpointBar, setStatus, showFloorplan } from "./ui.
 import { Minimap, splatWorldBox } from "./minimap.js";
 import { TouchControls, isTouch } from "./touch.js";
 import { XrMode } from "./xr.js";
+import { PanoView } from "./pano.js";
 
 const EYE_HEIGHT = 1.6;
 const WALK_SPEED = 1.4;      // m/s
@@ -37,7 +38,7 @@ const orbit = new OrbitControls(camera, renderer.domElement);
 orbit.enableDamping = true;
 const walk = new PointerLockControls(camera, document.body);
 const touch = isTouch ? new TouchControls(renderer.domElement, camera) : null;
-let mode = "orbit";
+let mode = "orbit";      // orbit | walk | pano
 
 // ---------- Turul ----------
 const tourUrl = params.get("tour") ?? "tour/tour.json";
@@ -45,8 +46,12 @@ const tourBase = tourUrl.substring(0, tourUrl.lastIndexOf("/") + 1);
 const meshes = new Map();   // id cameră → SplatMesh
 const doorGroup = new THREE.Group();
 scene.add(doorGroup);
+const markerGroup = new THREE.Group();   // celelalte puncte cu panoramă din cameră (modul Panoramă)
+scene.add(markerGroup);
+const pano = new PanoView(scene);
 let tour;
 let currentRoom;
+let currentVp = null;
 let minimap;
 
 async function main() {
@@ -94,9 +99,11 @@ function applyTransform(mesh, t = {}) {
 }
 
 function loadRoom(room) {
+  if (!room.splat) return null;   // cameră doar cu panorame
   if (meshes.has(room.id)) return meshes.get(room.id);
   const mesh = new SplatMesh({ url: tourBase + room.splat, lod: LOD });
   applyTransform(mesh, room.transform);
+  mesh.visible = !(mode === "pano" && pano.sphere.material.opacity === 1);
   scene.add(mesh);
   meshes.set(room.id, mesh);
   return mesh;
@@ -120,14 +127,21 @@ async function enterRoom(id, viewpointName, instant = false) {
   const room = tour.rooms.find((r) => r.id === id);
   if (!room) return;
   const mesh = loadRoom(room);
-  setStatus(`Se încarcă ${room.name}…`);
-  await mesh.initialized;
-  setStatus("");
+  if (mesh) {
+    setStatus(`Se încarcă ${room.name}…`);
+    await mesh.initialized;
+    setStatus("");
+  }
   currentRoom = null;
   setActiveRoom(room);
-  const vp = room.viewpoints?.find((v) => v.name === viewpointName) ?? room.viewpoints?.[0];
+  const vps = room.viewpoints ?? [];
+  // Camera fără model se vizitează doar prin panorame; în modul Panoramă rămânem în panorame cât se poate.
+  const wantPano = !mesh || mode === "pano";
+  const vp = vps.find((v) => v.name === viewpointName)
+    ?? (wantPano ? vps.find((v) => v.pano) : null) ?? vps[0];
+  if (!mesh && !vp?.pano) { setStatus(`${room.name}: nu are nici model 3D, nici panoramă.`); return; }
   if (vp) goTo(vp, instant);
-  else frameMesh(mesh);
+  else { exitPano(); frameMesh(mesh); }
 }
 
 // Fără puncte de vedere: încadrăm modelul automat.
@@ -143,7 +157,7 @@ function frameMesh(mesh) {
 }
 
 // ---------- Uși (hotspot-uri) ----------
-function doorSprite(label) {
+function doorSprite(label, icon = "→") {
   const c = document.createElement("canvas");
   c.width = 256; c.height = 96;
   const g = c.getContext("2d");
@@ -152,7 +166,7 @@ function doorSprite(label) {
   g.strokeStyle = "#4fa3ff"; g.lineWidth = 6; g.stroke();
   g.fillStyle = "#eef0f3"; g.font = "600 36px system-ui, sans-serif";
   g.textAlign = "center"; g.textBaseline = "middle";
-  g.fillText(`→ ${label}`, 128, 50, 220);
+  g.fillText(`${icon} ${label}`, 128, 50, 220);
   // Mărime constantă pe ecran, oricât de aproape ar fi ușa.
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, sizeAttenuation: false }));
   s.scale.set(0.16, 0.06, 1);
@@ -177,7 +191,7 @@ function buildDoors() {
 const raycaster = new THREE.Raycaster();
 function doorAt(ndc) {
   raycaster.setFromCamera(ndc, camera);
-  return raycaster.intersectObjects(doorGroup.children)[0]?.object;
+  return raycaster.intersectObjects([...doorGroup.children, ...markerGroup.children])[0]?.object;
 }
 
 // Click (nu tragere) pe o ușă → camera vecină. În modul mers, ținta e centrul ecranului.
@@ -188,7 +202,8 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   const ndc = walk.isLocked ? new THREE.Vector2(0, 0)
     : new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   const door = doorAt(ndc);
-  if (door) enterRoom(door.userData.to);
+  if (door?.userData.vp) goTo(door.userData.vp);
+  else if (door) enterRoom(door.userData.to);
   else if (mode === "walk" && !isTouch && !walk.isLocked) walk.lock();
 });
 
@@ -222,6 +237,10 @@ const floorY = (room) => room?.bounds?.min[1] ?? 0;
 let transition = null;
 
 function goTo(vp, instant = false) {
+  currentVp = vp;
+  updatePanoButton();
+  if (vp.pano && (mode === "pano" || !currentRoom?.splat) && !xr.presenting) { showPano(vp); return; }
+  exitPano();
   // În VR capul e urmărit de cască: mutăm vizitatorul acolo, privind spre punctul ales.
   if (xr.presenting) {
     xr.teleport(vp.pos[0], vp.pos[2], Math.atan2(-(vp.look[0] - vp.pos[0]), -(vp.look[2] - vp.pos[2])));
@@ -260,12 +279,13 @@ function updateTransition(now) {
 
 // ---------- Moduri: machetă (orbită) / mers (WASD sau joystick) ----------
 const modeBtn = document.getElementById("mode");
-modeBtn.addEventListener("click", () => setMode(mode === "orbit" ? "walk" : "orbit"));
+modeBtn.addEventListener("click", () => setMode(mode === "pano" ? panoReturn : mode === "orbit" ? "walk" : "orbit"));
 document.getElementById("hint").innerHTML = isTouch
   ? "<b>Machetă:</b> un deget rotește, două fac zoom.<br><b>Mers:</b> joystick în stânga, glisare în dreapta pentru privire."
-  : "<b>Machetă:</b> trage cu mouse-ul pentru rotire, rotița pentru zoom.<br><b>Mers:</b> click în scenă, apoi W A S D + mouse; Esc ca să ieși. Click pe o ușă te duce în camera vecină.";
+  : "<b>Foto 360°:</b> trage de imagine, rotița pentru zoom; ● duce la alt punct fotografiat.<br><b>Machetă:</b> trage cu mouse-ul pentru rotire, rotița pentru zoom.<br><b>Mers:</b> click în scenă, apoi W A S D + mouse; Esc ca să ieși. Click pe o ușă te duce în camera vecină.";
 
 function setMode(m) {
+  if (mode === "pano") { exitPano(m); return; }
   mode = m;
   orbit.enabled = m === "orbit";
   touch?.setEnabled(m === "walk");
@@ -310,6 +330,79 @@ function updateWalk(dt) {
   if (here) setActiveRoom(here);
 }
 
+// ---------- Modul Panoramă (Faza 5, pasul 7, varianta A) ----------
+const panoBtn = document.getElementById("pano");
+let panoReturn = "orbit";   // modul în care revenim la ieșirea din panoramă
+
+function updatePanoButton() {
+  const panoOnly = !!currentRoom && !currentRoom.splat;
+  const on = mode === "pano";
+  panoBtn.hidden = !currentVp?.pano || (panoOnly && on);
+  panoBtn.classList.toggle("active", on);
+  panoBtn.textContent = on ? "Ieși din 360°" : "Foto 360°";
+  modeBtn.hidden = panoOnly && on;
+}
+panoBtn.addEventListener("click", () => {
+  if (mode === "pano") { exitPano(); if (currentVp) goTo(currentVp); }
+  else if (currentVp?.pano) showPano(currentVp);
+});
+
+const showSplats = (v) => { for (const m of meshes.values()) m.visible = v; };
+
+function showPano(vp) {
+  if (mode !== "pano") {
+    panoReturn = mode;
+    if (walk.isLocked) walk.unlock();
+    touch?.setEnabled(false);
+    mode = "pano";
+  }
+  transition = null;
+  currentVp = vp;
+  // Vizitatorul stă în punctul fotografiat și doar se rotește: orbită în jurul unui punct la 1 cm în față,
+  // cu sensul inversat (tragi de imagine, ca în Street View).
+  const pos = new THREE.Vector3().fromArray(vp.pos);
+  const dir = new THREE.Vector3().fromArray(vp.look).sub(pos).normalize();
+  camera.position.copy(pos);
+  camera.lookAt(pos.clone().add(dir));
+  orbit.target.copy(pos).addScaledVector(dir, 0.01);
+  Object.assign(orbit, { enabled: true, enableZoom: false, enablePan: false, rotateSpeed: -0.5 });
+  modeBtn.textContent = "Mod: foto 360°";
+  pano.show(vp, tourBase).then(() => { if (pano.vp === vp) showSplats(false); })
+    .catch(() => { setStatus(`Nu pot încărca ${vp.pano}`); exitPano(); });
+  // Celelalte puncte cu panoramă din cameră: marcaje aproape de podea + preîncărcare.
+  const others = (currentRoom?.viewpoints ?? []).filter((v) => v.pano && v !== vp);
+  markerGroup.clear();
+  for (const o of others) {
+    const s = doorSprite(o.name, "●");
+    s.position.fromArray(o.pos);
+    s.position.y = floorY(currentRoom) + 0.3;
+    s.userData = { vp: o };
+    markerGroup.add(s);
+  }
+  pano.preload(others.map((o) => tourBase + o.pano));
+  updatePanoButton();
+}
+
+function exitPano(next = panoReturn) {
+  if (mode !== "pano") return;
+  showSplats(true);
+  pano.hide();
+  markerGroup.clear();
+  Object.assign(orbit, { enableZoom: true, enablePan: true, rotateSpeed: 1 });
+  camera.fov = 70;
+  camera.updateProjectionMatrix();
+  mode = null;
+  setMode(next);
+  updatePanoButton();
+}
+
+// Zoom în panoramă: unghiul de vedere (rotița).
+renderer.domElement.addEventListener("wheel", (e) => {
+  if (mode !== "pano") return;
+  camera.fov = THREE.MathUtils.clamp(camera.fov + e.deltaY * 0.05, 30, 90);
+  camera.updateProjectionMatrix();
+}, { passive: true });
+
 // ---------- Mod VR (Faza 5, pasul 9) ----------
 const xr = new XrMode({
   renderer, scene, camera, doors: doorGroup, speed: WALK_SPEED,
@@ -319,7 +412,7 @@ const xr = new XrMode({
   onDoor: (door) => enterRoom(door.userData.to),
   onMove: (x, z) => { const here = roomAt(x, z); if (here) setActiveRoom(here); },
   // Intrarea pornește din modul mers: vizitatorul e deja în cameră, la înălțimea ochilor.
-  onEnter: () => { setMode("walk"); vrBtn.textContent = "Ieși din VR"; },
+  onEnter: () => { exitPano(); setMode("walk"); vrBtn.textContent = "Ieși din VR"; },
   onExit: () => { vrBtn.textContent = "VR"; },
 });
 const vrBtn = document.getElementById("vr");
@@ -333,10 +426,11 @@ XrMode.supported().then((ok) => {
 const clock = new THREE.Clock();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min(clock.getDelta(), 0.1);
+  pano.update(now);
   if (xr.presenting) xr.update(dt);
   else if (!updateTransition(now)) {
     updateWalk(dt);
-    if (mode === "orbit") orbit.update();
+    if (mode === "orbit" || mode === "pano") orbit.update();
   }
   renderer.render(scene, camera);
   minimap?.draw();
@@ -355,7 +449,7 @@ const api = {
   get tour() { return tour; },
   get currentRoom() { return currentRoom; },
   get minimap() { return minimap; },
-  goTo, enterRoom, applyTransform, buildDoors, splatWorldBox,
+  goTo, enterRoom, applyTransform, buildDoors, splatWorldBox, pano,
   refreshViewpoints: () => buildViewpointBar(currentRoom?.viewpoints ?? [], (vp) => goTo(vp)),
   onRoomChange: null,
 };

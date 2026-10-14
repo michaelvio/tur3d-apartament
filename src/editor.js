@@ -1,5 +1,5 @@
 // Editorul de aliniere (Faza 4, varianta b), încărcat doar cu ?edit=1.
-// Pentru camera curentă: transformare (poziție, rotație, scară), bounds, puncte de vedere, uși, start.
+// Pentru camera curentă: transformare (poziție, rotație, scară), bounds, puncte de vedere (cu rotația panoramei), uși, start.
 // „Salvează" scrie tour.json prin scripts/serve.py; pe alt server descarcă fișierul.
 
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -76,7 +76,23 @@ export class Editor {
     this.render();
   }
 
+  // Cameră fără model: un dreptunghi de pornire în jurul vizitatorului, ajustat apoi din câmpuri.
+  boundsHere() {
+    const p = this.api.camera.position;
+    const y = r2(p.y - 1.6);
+    this.room.bounds = { min: [r2(p.x - 2), y, r2(p.z - 2)], max: [r2(p.x + 2), r2(y + 2.6), r2(p.z + 2)] };
+    this.changed({ bounds: true });
+    this.render();
+  }
+
   // ---------- Puncte de vedere, uși, start ----------
+  // Rotația panoramei: se vede imediat dacă panorama e deschisă (ușile trebuie să cadă în dreptul lor).
+  setPanoYaw(vp, deg) {
+    vp.panoYaw = deg;
+    if (this.api.pano.vp === vp) this.api.pano.setYaw(deg);
+    this.changed();
+  }
+
   addViewpoint(name) {
     const { camera, THREE } = this.api;
     const look = camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(2));
@@ -155,20 +171,23 @@ export class Editor {
     this.panel.replaceChildren(
       el("h2", {}, `Editor — ${room.name}`),
 
-      el("h3", {}, "Transformare"),
-      el("div", { className: "row" }, el("span", {}, "poz."),
-        ...[0, 1, 2].map((i) => num(pos[i], 0.05, (v) => this.setTransform("position", v, i)))),
-      el("div", { className: "row" },
-        el("span", {}, "rot. Y°"), num(t.rotationY ?? 0, 1, (v) => this.setTransform("rotationY", v)),
-        el("span", {}, "scară"), num(t.scale ?? 1, 0.01, (v) => this.setTransform("scale", v))),
-      el("label", { className: "row" },
-        el("input", { type: "checkbox", checked: t.flipX ?? true, onchange: (e) => this.setTransform("flipX", e.target.checked) }),
-        "flipX (model COLMAP, Y în jos)"),
+      ...(room.splat ? [
+        el("h3", {}, "Transformare"),
+        el("div", { className: "row" }, el("span", {}, "poz."),
+          ...[0, 1, 2].map((i) => num(pos[i], 0.05, (v) => this.setTransform("position", v, i)))),
+        el("div", { className: "row" },
+          el("span", {}, "rot. Y°"), num(t.rotationY ?? 0, 1, (v) => this.setTransform("rotationY", v)),
+          el("span", {}, "scară"), num(t.scale ?? 1, 0.01, (v) => this.setTransform("scale", v))),
+        el("label", { className: "row" },
+          el("input", { type: "checkbox", checked: t.flipX ?? true, onchange: (e) => this.setTransform("flipX", e.target.checked) }),
+          "flipX (model COLMAP, Y în jos)"),
+      ] : [el("p", { className: "muted" }, "Cameră doar cu panorame (fără model 3D).")]),
 
       el("h3", {}, "Bounds (lume, m)"),
       ...boundsRows,
       el("div", { className: "row" },
-        el("button", { onclick: () => this.boundsFromModel() }, "Din model"),
+        room.splat && el("button", { onclick: () => this.boundsFromModel() }, "Din model"),
+        !room.splat && !room.bounds && el("button", { onclick: () => this.boundsHere() }, "Creează aici (4 × 4 m)"),
         room.bounds && el("button", { onclick: () => { delete room.bounds; this.changed({ bounds: true }); this.render(); } }, "Șterge")),
 
       el("h3", {}, "Puncte de vedere"),
@@ -177,6 +196,11 @@ export class Editor {
         el("button", { title: "Punct de start al turului",
           className: tour.start?.room === room.id && tour.start?.viewpoint === vp.name ? "active" : "",
           onclick: () => { tour.start = { room: room.id, viewpoint: vp.name }; this.changed(); this.render(); } }, "★"),
+        vp.pano && el("input", { type: "number", step: 1, value: vp.panoYaw ?? 0, title: "Rotația panoramei (°)",
+          style: "width:64px", oninput: (e) => {
+            const v = parseFloat(e.target.value);
+            if (Number.isFinite(v)) this.setPanoYaw(vp, v);
+          } }),
         el("button", { title: "Șterge", onclick: () => this.remove(room.viewpoints, vp) }, "✕")))),
       el("div", { className: "row" }, vpName,
         el("button", { onclick: () => this.addViewpoint(vpName.value.trim()) }, "Adaugă din cameră")),
