@@ -281,7 +281,7 @@ function updateTransition(now) {
 const modeBtn = document.getElementById("mode");
 modeBtn.addEventListener("click", () => setMode(mode === "pano" ? panoReturn : mode === "orbit" ? "walk" : "orbit"));
 document.getElementById("hint").innerHTML = isTouch
-  ? "<b>Machetă:</b> un deget rotește, două fac zoom.<br><b>Mers:</b> joystick în stânga, glisare în dreapta pentru privire."
+  ? "<b>Foto 360°:</b> trage de imagine, ciupește pentru zoom.<br><b>Machetă:</b> un deget rotește, două fac zoom.<br><b>Mers:</b> joystick în stânga, glisare în dreapta pentru privire."
   : "<b>Foto 360°:</b> trage de imagine, rotița pentru zoom; ● duce la alt punct fotografiat.<br><b>Machetă:</b> trage cu mouse-ul pentru rotire, rotița pentru zoom.<br><b>Mers:</b> click în scenă, apoi W A S D + mouse; Esc ca să ieși. Click pe o ușă te duce în camera vecină.";
 
 function setMode(m) {
@@ -396,12 +396,34 @@ function exitPano(next = panoReturn) {
   updatePanoButton();
 }
 
-// Zoom în panoramă: unghiul de vedere (rotița).
-renderer.domElement.addEventListener("wheel", (e) => {
-  if (mode !== "pano") return;
-  camera.fov = THREE.MathUtils.clamp(camera.fov + e.deltaY * 0.05, 30, 90);
+// Zoom în panoramă: unghiul de vedere (rotița; pe telefon ciupire cu două degete).
+const setFov = (fov) => {
+  camera.fov = THREE.MathUtils.clamp(fov, 30, 90);
   camera.updateProjectionMatrix();
+};
+renderer.domElement.addEventListener("wheel", (e) => {
+  if (mode === "pano") setFov(camera.fov + e.deltaY * 0.05);
 }, { passive: true });
+
+const fingers = new Map();   // pointerId → [x, y]
+let pinch = null;            // { dist, fov } la începutul ciupirii
+const spread = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+renderer.domElement.addEventListener("pointerdown", (e) => {
+  if (e.pointerType !== "touch") return;
+  fingers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (fingers.size === 2) pinch = { dist: spread(), fov: camera.fov };
+});
+renderer.domElement.addEventListener("pointermove", (e) => {
+  if (!fingers.has(e.pointerId)) return;
+  fingers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (mode === "pano" && pinch && fingers.size === 2) setFov(pinch.fov * pinch.dist / Math.max(spread(), 1));
+});
+for (const type of ["pointerup", "pointercancel"]) {
+  renderer.domElement.addEventListener(type, (e) => {
+    fingers.delete(e.pointerId);
+    if (fingers.size < 2) pinch = null;
+  });
+}
 
 // ---------- Mod VR (Faza 5, pasul 9) ----------
 const xr = new XrMode({
