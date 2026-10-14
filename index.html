@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Tur 3D apartament</title>
+  <link rel="stylesheet" href="src/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/",
+      "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.3.1/dist/spark.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <header id="top">
+    <h1 id="title">Tur 3D</h1>
+    <nav id="rooms"></nav>
+    <button id="plan" hidden title="Planul apartamentului">Plan</button>
+    <button id="vr" hidden title="Tur în cască VR (WebXR)">VR</button>
+    <button id="mode" title="Comută între mers (WASD) și machetă (orbită)">Mod: machetă</button>
+  </header>
+
+  <div id="viewpoints"></div>
+
+  <canvas id="minimap" hidden title="Click pe o cameră ca să mergi acolo"></canvas>
+
+  <div id="hint"></div>
+
+  <div id="status">Se încarcă…</div>
+
+  <script type="module" src="src/viewer.js"></script>
+</body>
+</html>

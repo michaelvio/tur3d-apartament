@@ -1,0 +1,67 @@
+{
+    "apartment": "Test pipeline (splat demo Spark)",
+    "units": "m",
+    "rooms": [
+        {
+            "id": "_test",
+            "name": "Test",
+            "splat": "_test.spz",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationY": 0.0,
+                "scale": 1.0,
+                "flipX": true
+            },
+            "viewpoints": [
+                {
+                    "name": "Față",
+                    "pos": [
+                        0.0,
+                        0.0,
+                        2.5
+                    ],
+                    "look": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Lateral",
+                    "pos": [
+                        2.2,
+                        0.8,
+                        1.0
+                    ],
+                    "look": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Sus",
+                    "pos": [
+                        0.0,
+                        2.6,
+                        0.4
+                    ],
+                    "look": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            ],
+            "doors": []
+        }
+    ],
+    "start": {
+        "room": "_test",
+        "viewpoint": "Față"
+    }
+}
