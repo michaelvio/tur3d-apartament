@@ -5,7 +5,7 @@
         {
             "id": "dormitor",
             "name": "Dormitor",
-            "splat": "dormitor.ply",
+            "splat": "dormitor.spz",
             "transform": {
                 "position": [
                     -0.0507,
