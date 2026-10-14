@@ -1,67 +1,61 @@
 {
-    "apartment": "Test pipeline (splat demo Spark)",
+    "apartment": "Apartament",
     "units": "m",
     "rooms": [
         {
-            "id": "_test",
-            "name": "Test",
-            "splat": "_test.spz",
+            "id": "dormitor",
+            "name": "Dormitor",
+            "splat": "dormitor.ply",
             "transform": {
                 "position": [
-                    0.0,
-                    0.0,
-                    0.0
+                    -0.0507,
+                    1.2678,
+                    -0.0051
                 ],
-                "rotationY": 0.0,
-                "scale": 1.0,
-                "flipX": true
+                "rotationY": 44.5,
+                "scale": 0.20161,
+                "flipX": true,
+                "level": [
+                    -0.124406,
+                    0.269733,
+                    0.0,
+                    0.954865
+                ]
+            },
+            "bounds": {
+                "min": [
+                    -2.8,
+                    0.0,
+                    -4.05
+                ],
+                "max": [
+                    2.45,
+                    2.6,
+                    1.58
+                ]
             },
             "viewpoints": [
                 {
-                    "name": "Față",
+                    "name": "Centru",
                     "pos": [
                         0.0,
-                        0.0,
-                        2.5
+                        1.6,
+                        0.0
                     ],
                     "look": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ]
-                },
-                {
-                    "name": "Lateral",
-                    "pos": [
-                        2.2,
-                        0.8,
-                        1.0
+                        0.13,
+                        1.4,
+                        -0.99
                     ],
-                    "look": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ]
-                },
-                {
-                    "name": "Sus",
-                    "pos": [
-                        0.0,
-                        2.6,
-                        0.4
-                    ],
-                    "look": [
-                        0.0,
-                        0.0,
-                        0.0
-                    ]
+                    "panoYaw": 0.0
                 }
             ],
             "doors": []
         }
     ],
+    "floorplan": "floorplan.svg",
     "start": {
-        "room": "_test",
-        "viewpoint": "Față"
+        "room": "dormitor",
+        "viewpoint": "Centru"
     }
 }

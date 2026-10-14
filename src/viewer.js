@@ -92,9 +92,11 @@ async function main() {
 }
 
 // COLMAP/3DGS: Y în jos, Z înainte → three.js: rotație 180° în jurul lui X (flipX).
+// level (tur3d align): nivelarea, aplicată întâi, în coordonatele modelului.
 function applyTransform(mesh, t = {}) {
   mesh.quaternion.identity();
-  if (t.flipX ?? true) mesh.quaternion.set(1, 0, 0, 0);
+  if (t.level) mesh.quaternion.fromArray(t.level);
+  if (t.flipX ?? true) mesh.quaternion.premultiply(new THREE.Quaternion(1, 0, 0, 0));
   mesh.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(t.rotationY ?? 0));
   mesh.position.fromArray(t.position ?? [0, 0, 0]);
   mesh.scale.setScalar(t.scale ?? 1);
