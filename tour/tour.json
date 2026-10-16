@@ -65,6 +65,98 @@
                 }
             ],
             "doors": []
+        },
+        {
+            "id": "living",
+            "name": "Living",
+            "splat": "living.spz",
+            "transform": {
+                "position": [
+                    0.0349,
+                    1.6974,
+                    0.027
+                ],
+                "rotationY": 82.0,
+                "scale": 0.23158,
+                "flipX": true,
+                "level": [
+                    -0.038868,
+                    0.796991,
+                    0.0,
+                    0.602739
+                ]
+            },
+            "bounds": {
+                "min": [
+                    -2.74,
+                    0.0,
+                    -2.95
+                ],
+                "max": [
+                    1.75,
+                    2.6,
+                    2.35
+                ]
+            },
+            "viewpoints": [
+                {
+                    "name": "Centru",
+                    "pos": [
+                        0.0,
+                        1.6,
+                        0.0
+                    ],
+                    "look": [
+                        0.96,
+                        1.4,
+                        -0.26
+                    ],
+                    "panoYaw": 0.0
+                },
+                {
+                    "name": "Punct 1",
+                    "pos": [
+                        0.55,
+                        1.6,
+                        0.29
+                    ],
+                    "look": [
+                        1.26,
+                        1.4,
+                        -0.41
+                    ],
+                    "panoYaw": 0.0
+                },
+                {
+                    "name": "Punct 2",
+                    "pos": [
+                        0.53,
+                        1.6,
+                        -0.44
+                    ],
+                    "look": [
+                        1.04,
+                        1.4,
+                        0.42
+                    ],
+                    "panoYaw": 0.0
+                },
+                {
+                    "name": "Punct 3",
+                    "pos": [
+                        -1.26,
+                        1.6,
+                        0.06
+                    ],
+                    "look": [
+                        -2.26,
+                        1.4,
+                        0.03
+                    ],
+                    "panoYaw": 0.0
+                }
+            ],
+            "doors": []
         }
     ],
     "floorplan": "floorplan.svg",
