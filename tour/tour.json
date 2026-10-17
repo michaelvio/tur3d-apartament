@@ -3,79 +3,6 @@
     "units": "m",
     "rooms": [
         {
-            "id": "dormitor",
-            "name": "Dormitor",
-            "splat": "dormitor.spz",
-            "transform": {
-                "position": [
-                    3.6793,
-                    1.2678,
-                    -0.0051
-                ],
-                "rotationY": 44.5,
-                "scale": 0.20161,
-                "flipX": true,
-                "level": [
-                    -0.124406,
-                    0.269733,
-                    0.0,
-                    0.954865
-                ]
-            },
-            "bounds": {
-                "min": [
-                    0.93,
-                    0.0,
-                    -4.05
-                ],
-                "max": [
-                    6.18,
-                    2.6,
-                    1.58
-                ]
-            },
-            "viewpoints": [
-                {
-                    "name": "Centru",
-                    "pos": [
-                        3.73,
-                        1.6,
-                        0.0
-                    ],
-                    "look": [
-                        3.86,
-                        1.4,
-                        -0.99
-                    ],
-                    "panoYaw": 0.0
-                },
-                {
-                    "name": "Punct 1",
-                    "pos": [
-                        5.07,
-                        1.6,
-                        0.21
-                    ],
-                    "look": [
-                        5.55,
-                        1.4,
-                        -0.66
-                    ],
-                    "panoYaw": 0.0
-                }
-            ],
-            "doors": [
-                {
-                    "to": "living",
-                    "pos": [
-                        1.5,
-                        1.0,
-                        -3.8
-                    ]
-                }
-            ]
-        },
-        {
             "id": "living",
             "name": "Living",
             "splat": "living.spz",
@@ -165,21 +92,12 @@
                     "panoYaw": 0.0
                 }
             ],
-            "doors": [
-                {
-                    "to": "dormitor",
-                    "pos": [
-                        1.5,
-                        1.0,
-                        -4.4
-                    ]
-                }
-            ]
+            "doors": []
         }
     ],
     "floorplan": "floorplan.svg",
     "start": {
-        "room": "dormitor",
+        "room": "living",
         "viewpoint": "Centru"
     }
 }
