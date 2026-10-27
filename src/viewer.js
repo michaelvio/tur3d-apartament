@@ -16,6 +16,15 @@ const WALK_SPEED = 1.4;      // m/s
 const WALL_MARGIN = 0.25;    // m, distanța minimă față de marginea camerei
 const DOOR_RADIUS = 0.6;     // m, lângă o ușă marginea nu se aplică: așa treci în camera vecină
 const TRANSITION_MS = 1200;
+// Unghiul de vedere pe modelul 3D, pe latura lungă a ecranului. Telefonul a filmat doar ~52° × 31°: tot ce iese
+// mult din unghiul filmat e „ghicit” de model (ceață, pete negre), așa că nu arătăm cu mult mai mult de atât.
+const SPLAT_FOV_LONG = 72;
+const PANO_FOV = 70;
+const splatFov = () => {
+  const t = Math.tan(THREE.MathUtils.degToRad(SPLAT_FOV_LONG / 2));
+  const aspect = window.innerWidth / window.innerHeight;
+  return THREE.MathUtils.radToDeg(2 * Math.atan(aspect >= 1 ? t / aspect : t));   // fov din three.js e vertical
+};
 
 const params = new URLSearchParams(location.search);
 // Pe mobil (Faza 5, pasul 8): rezoluție limitată, LoD (Spark ține ~1 mil. splat-uri pe Android)
@@ -33,7 +42,7 @@ document.getElementById("app").appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x101114);
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.02, 200);
+const camera = new THREE.PerspectiveCamera(splatFov(), window.innerWidth / window.innerHeight, 0.02, 200);
 camera.rotation.order = "YXZ";
 scene.add(new SparkRenderer({ renderer }));
 
@@ -363,6 +372,8 @@ function showPano(vp) {
     if (walk.isLocked) walk.unlock();
     touch?.setEnabled(false);
     mode = "pano";
+    camera.fov = PANO_FOV;
+    camera.updateProjectionMatrix();
   }
   transition = null;
   currentVp = vp;
@@ -397,7 +408,7 @@ function exitPano(next = panoReturn) {
   pano.hide();
   markerGroup.clear();
   Object.assign(orbit, { enableZoom: true, enablePan: true, rotateSpeed: 1 });
-  camera.fov = 70;
+  camera.fov = splatFov();
   camera.updateProjectionMatrix();
   mode = null;
   setMode(next);
@@ -469,6 +480,7 @@ renderer.setAnimationLoop((now) => {
 addEventListener("resize", () => {
   if (xr.presenting) return;
   camera.aspect = window.innerWidth / window.innerHeight;
+  if (mode !== "pano") camera.fov = splatFov();
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
