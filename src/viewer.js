@@ -16,9 +16,9 @@ const WALK_SPEED = 1.4;      // m/s
 const WALL_MARGIN = 0.25;    // m, distanța minimă față de marginea camerei
 const DOOR_RADIUS = 0.6;     // m, lângă o ușă marginea nu se aplică: așa treci în camera vecină
 const TRANSITION_MS = 1200;
-// Unghiul de vedere pe modelul 3D, pe latura lungă a ecranului. Telefonul a filmat doar ~52° × 31°: tot ce iese
-// mult din unghiul filmat e „ghicit” de model (ceață, pete negre), așa că nu arătăm cu mult mai mult de atât.
-const SPLAT_FOV_LONG = 72;
+// Unghiul de vedere pe modelul 3D, pe latura lungă a ecranului. Ce iese mult din unghiul pozelor e „ghicit” de model
+// (ceață, pete negre): videoul stabilizat vedea doar ~52°, pozele cu ultra-wide-ul ~95°, deci nu trecem de atât.
+const SPLAT_FOV_LONG = 85;
 const PANO_FOV = 70;
 const splatFov = () => {
   const t = Math.tan(THREE.MathUtils.degToRad(SPLAT_FOV_LONG / 2));
